@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form to Object Creator - GHL App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background: white;
+            border-bottom-color: #3498db;
+            color: #3498db;
+        }
+        
+        .tab:hover {
+            background: #e9ecef;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .config-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+        
+        .mapping-container {
+            display: grid;
+            grid-template-columns: 1fr 50px 1fr;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .mapping-arrow {
+            text-align: center;
+            font-size: 1.5em;
+            color: #3498db;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background: #27ae60;
+        }
+        
+        .status-disconnected {
+            background: #e74c3c;
+        }
+        
+        .status-pending {
+            background: #f39c12;
+        }
+        
+        .logs-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .log-timestamp {
+            color: #95a5a6;
+            margin-right: 10px;
+        }
+        
+        .log-success {
+            color: #2ecc71;
+        }
+        
+        .log-error {
+            color: #e74c3c;
+        }
+        
+        .log-info {
+            color: #3498db;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h4 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+        
+        .key-generator {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .key-option {
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .key-option:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+        
+        .key-option.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+        }
+        
+        .key-option h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .key-option p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Form to Object Creator</h1>
+            <p>Automatically create custom objects from GoHighLevel form submissions</p>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('setup')">Setup</div>
+            <div class="tab" onclick="showTab('mapping')">Field Mapping</div>
+            <div class="tab" onclick="showTab('keys')">Unique Keys</div>
+            <div class="tab" onclick="showTab('monitor')">Monitor</div>
+        </div>
+        
+        <!-- Setup Tab -->
+        <div class="tab-content active" id="setup">
+            <div class="config-section">
+                <h3>🔗 API Connection</h3>
+                <div class="form-group">
+                    <label>GoHighLevel API Key</label>
+                    <input type="password" id="api-key" placeholder="Enter your GHL API key">
+                </div>
+                <div class="form-group">
+                    <label>Location ID</label>
+                    <input type="text" id="location-id" placeholder="Enter your GHL Location ID">
+                </div>
+                <button class="btn" onclick="testConnection()">Test Connection</button>
+                <div id="connection-status"></div>
+            </div>
+            
+            <div class="config-section">
+                <h3>📋 Form Selection</h3>
+                <div class="form-group">
+                    <label>Select Form</label>
+                    <select id="form-select">
+                        <option value="">Choose a form...</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="loadForms()">Load Forms</button>
+            </div>
+            
+            <div class="config-section">
+                <h3>🎯 Target Object</h3>
+                <div class="form-group">
+                    <label>Custom Object Type</label>
+                    <select id="object-select">
+                        <option value="">Choose an object type...</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="loadObjects()">Load Objects</button>
+            </div>
+        </div>
+        
+        <!-- Mapping Tab -->
+        <div class="tab-content" id="mapping">
+            <div class="config-section">
+                <h3>🔄 Field Mapping</h3>
+                <p>Map form fields to custom object fields. Fields will be automatically matched by name where possible.</p>
+                <div id="field-mappings">
+                    <!-- Dynamic field mappings will appear here -->
+                </div>
+                <button class="btn btn-success" onclick="autoMapFields()">Auto-Map Fields</button>
+                <button class="btn" onclick="addCustomMapping()">Add Custom Mapping</button>
+            </div>
+        </div>
+        
+        <!-- Unique Keys Tab -->
+        <div class="tab-content" id="keys">
+            <div class="config-section">
+                <h3>🔑 Unique Key Generation</h3>
+                <p>Choose how to generate unique identifiers for new object records.</p>
+                <div class="key-generator">
+                    <div class="key-option" onclick="selectKeyType('uuid')">
+                        <h4>UUID</h4>
+                        <p>Generates random unique IDs like: abc123-def456-ghi789</p>
+                    </div>
+                    <div class="key-option" onclick="selectKeyType('sequential')">
+                        <h4>Sequential</h4>
+                        <p>Numbers with prefix like: LEAD-001, LEAD-002, LEAD-003</p>
+                    </div>
+                    <div class="key-option" onclick="selectKeyType('date')">
+                        <h4>Date-Based</h4>
+                        <p>Uses date/time like: 20250729-143052</p>
+                    </div>
+                    <div class="key-option" onclick="selectKeyType('composite')">
+                        <h4>Composite</h4>
+                        <p>Combines fields like: SMITH-JOHN-2025</p>
+                    </div>
+                </div>
+                
+                <div id="key-config" style="margin-top: 20px;">
+                    <!-- Key configuration options will appear here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Monitor Tab -->
+        <div class="tab-content" id="monitor">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4 id="total-processed">0</h4>
+                    <p>Forms Processed</p>
+                </div>
+                <div class="stat-card">
+                    <h4 id="objects-created">0</h4>
+                    <p>Objects Created</p>
+                </div>
+                <div class="stat-card">
+                    <h4 id="success-rate">0%</h4>
+                    <p>Success Rate</p>
+                </div>
+                <div class="stat-card">
+                    <h4 id="last-sync">Never</h4>
+                    <p>Last Sync</p>
+                </div>
+            </div>
+            
+            <div class="config-section">
+                <h3>📊 Activity Log</h3>
+                <div class="logs-container" id="activity-logs">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[2025-07-29 14:30:52]</span>
+                        <span class="log-info">App initialized successfully</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-timestamp">[2025-07-29 14:30:53]</span>
+                        <span class="log-info">Waiting for configuration...</span>
+                    </div>
+                </div>
+                <button class="btn" onclick="clearLogs()">Clear Logs</button>
+                <button class="btn btn-success" onclick="testFormSubmission()">Test Form Submission</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global app state
+        const appState = {
+            apiKey: '',
+            locationId: '',
+            selectedForm: null,
+            selectedObject: null,
+            fieldMappings: [],
+            keyType: 'uuid',
+            keyConfig: {},
+            stats: {
+                totalProcessed: 0,
+                objectsCreated: 0,
+                successRate: 100,
+                lastSync: 'Never'
+            }
+        };
+        
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // API Connection
+        async function testConnection() {
+            const apiKey = document.getElementById('api-key').value;
+            const locationId = document.getElementById('location-id').value;
+            
+            if (!apiKey || !locationId) {
+                showAlert('Please enter both API key and Location ID', 'error');
+                return;
+            }
+            
+            // Store in app state
+            appState.apiKey = apiKey;
+            appState.locationId = locationId;
+            
+            // Simulate API test (replace with actual GHL API call)
+            addLog('Testing API connection...', 'info');
+            
+            setTimeout(() => {
+                document.getElementById('connection-status').innerHTML = `
+                    <div class="alert alert-success">
+                        <span class="status-indicator status-connected"></span>
+                        Successfully connected to GoHighLevel!
+                    </div>
+                `;
+                addLog('API connection successful', 'success');
+            }, 1500);
+        }
+        
+        // Load forms from GHL
+        async function loadForms() {
+            if (!appState.apiKey) {
+                showAlert('Please connect to GHL first', 'warning');
+                return;
+            }
+            
+            addLog('Loading forms from GoHighLevel...', 'info');
+            
+            // Simulate form loading (replace with actual API call)
+            const forms = [
+                { id: 'form1', name: 'Contact Us Form' },
+                { id: 'form2', name: 'Lead Capture Form' },
+                { id: 'form3', name: 'Newsletter Signup' },
+                { id: 'form4', name: 'Demo Request Form' }
+            ];
+            
+            const formSelect = document.getElementById('form-select');
+            formSelect.innerHTML = '<option value="">Choose a form...</option>';
+            
+            forms.forEach(form => {
+                const option = document.createElement('option');
+                option.value = form.id;
+                option.textContent = form.name;
+                formSelect.appendChild(option);
+            });
+            
+            addLog(`Loaded ${forms.length} forms`, 'success');
+        }
+        
+        // Load custom objects from GHL
+        async function loadObjects() {
+            if (!appState.apiKey) {
+                showAlert('Please connect to GHL first', 'warning');
+                return;
+            }
+            
+            addLog('Loading custom objects...', 'info');
+            
+            // Simulate object loading (replace with actual API call)
+            const objects = [
+                { id: 'obj1', name: 'Companies' },
+                { id: 'obj2', name: 'Properties' },
+                { id: 'obj3', name: 'Projects' },
+                { id: 'obj4', name: 'Vendors' }
+            ];
+            
+            const objectSelect = document.getElementById('object-select');
+            objectSelect.innerHTML = '<option value="">Choose an object type...</option>';
+            
+            objects.forEach(obj => {
+                const option = document.createElement('option');
+                option.value = obj.id;
+                option.textContent = obj.name;
+                objectSelect.appendChild(option);
+            });
+            
+            addLog(`Loaded ${objects.length} object types`, 'success');
+        }
+        
+        // Auto-map fields between form and object
+        function autoMapFields() {
+            const mappingsContainer = document.getElementById('field-mappings');
+            
+            // Simulate form fields (replace with actual form analysis)
+            const formFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'message'];
+            const objectFields = ['first_name', 'last_name', 'email_address', 'phone_number', 'company_name', 'notes'];
+            
+            mappingsContainer.innerHTML = '';
+            
+            formFields.forEach((formField, index) => {
+                const objectField = objectFields[index] || '';
+                addFieldMapping(formField, objectField);
+            });
+            
+            addLog('Auto-mapped form fields to object fields', 'success');
+        }
+        
+        // Add a field mapping row
+        function addFieldMapping(formField = '', objectField = '') {
+            const mappingsContainer = document.getElementById('field-mappings');
+            
+            const mappingDiv = document.createElement('div');
+            mappingDiv.className = 'mapping-container';
+            mappingDiv.innerHTML = `
+                <div>
+                    <label>Form Field</label>
+                    <input type="text" value="${formField}" placeholder="Form field name">
+                </div>
+                <div class="mapping-arrow">→</div>
+                <div>
+                    <label>Object Field</label>
+                    <input type="text" value="${objectField}" placeholder="Object field name">
+                </div>
+            `;
+            
+            mappingsContainer.appendChild(mappingDiv);
+        }
+        
+        // Add custom mapping
+        function addCustomMapping() {
+            addFieldMapping();
+        }
+        
+        // Select unique key type
+        function selectKeyType(type) {
+            // Remove selection from all options
+            document.querySelectorAll('.key-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select current option
+            event.target.classList.add('selected');
+            appState.keyType = type;
+            
+            // Show configuration for selected type
+            showKeyConfig(type);
+            addLog(`Selected ${type} key generation`, 'info');
+        }
+        
+        // Show key configuration options
+        function showKeyConfig(type) {
+            const configDiv = document.getElementById('key-config');
+            
+            let configHTML = '';
+            
+            switch(type) {
+                case 'uuid':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>UUID Format</label>
+                            <select>
+                                <option>Standard UUID (36 chars)</option>
+                                <option>Short UUID (22 chars)</option>
+                                <option>Numeric UUID (numbers only)</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'sequential':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Prefix</label>
+                            <input type="text" placeholder="e.g. LEAD, CUSTOMER, PROJ" value="LEAD">
+                        </div>
+                        <div class="form-group">
+                            <label>Starting Number</label>
+                            <input type="number" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Padding (digits)</label>
+                            <input type="number" value="3" min="1" max="10">
+                        </div>
+                    `;
+                    break;
+                case 'date':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Date Format</label>
+                            <select>
+                                <option>YYYYMMDD-HHMMSS</option>
+                                <option>YYYY-MM-DD-HH-MM-SS</option>
+                                <option>YYYYMMDD</option>
+                                <option>YYMMDD-HHMM</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Timezone</label>
+                            <select>
+                                <option>UTC</option>
+                                <option>America/New_York</option>
+                                <option>America/Chicago</option>
+                                <option>America/Denver</option>
+                                <option>America/Los_Angeles</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'composite':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Field Pattern</label>
+                            <input type="text" placeholder="e.g. {lastName}-{firstName}-{year}" value="{lastName}-{firstName}-{year}">
+                        </div>
+                        <div class="form-group">
+                            <label>Separator</label>
+                            <input type="text" value="-" maxlength="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Case Conversion</label>
+                            <select>
+                                <option>UPPERCASE</option>
+                                <option>lowercase</option>
+                                <option>No Change</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            configDiv.innerHTML = configHTML;
+        }
+        
+        // Test form submission
+        function testFormSubmission() {
+            addLog('Testing form submission processing...', 'info');
+            
+            // Simulate form submission processing
+            setTimeout(() => {
+                const testData = {
+                    firstName: 'John',
+                    lastName: 'Doe',
+                    email: 'john.doe@example.com',
+                    phone: '555-0123',
+                    company: 'Test Company'
+                };
+                
+                addLog('Form submission received: ' + JSON.stringify(testData), 'info');
+                addLog('Generating unique key...', 'info');
+                
+                setTimeout(() => {
+                    const uniqueKey = generateUniqueKey(testData);
+                    addLog('Generated key: ' + uniqueKey, 'success');
+                    addLog('Creating custom object record...', 'info');
+                    
+                    setTimeout(() => {
+                        updateStats();
+                        addLog('Custom object created successfully!', 'success');
+                        showAlert('Test form submission processed successfully!', 'success');
+                    }, 1000);
+                }, 500);
+            }, 1000);
+        }
+        
+        // Generate unique key based on selected type
+        function generateUniqueKey(formData) {
+            switch(appState.keyType) {
+                case 'uuid':
+                    return 'uuid-' + Math.random().toString(36).substr(2, 9);
+                case 'sequential':
+                    return 'LEAD-' + String(appState.stats.objectsCreated + 1).padStart(3, '0');
+                case 'date':
+                    const now = new Date();
+                    return now.getFullYear() + 
+                           String(now.getMonth() + 1).padStart(2, '0') + 
+                           String(now.getDate()).padStart(2, '0') + '-' +
+                           String(now.getHours()).padStart(2, '0') + 
+                           String(now.getMinutes()).padStart(2, '0') + 
+                           String(now.getSeconds()).padStart(2, '0');
+                case 'composite':
+                    return (formData.lastName || 'UNKNOWN') + '-' + 
+                           (formData.firstName || 'UNKNOWN') + '-' + 
+                           new Date().getFullYear();
+                default:
+                    return 'key-' + Math.random().toString(36).substr(2, 9);
+            }
+        }
+        
+        // Update statistics
+        function updateStats() {
+            appState.stats.totalProcessed++;
+            appState.stats.objectsCreated++;
+            appState.stats.lastSync = new Date().toLocaleString();
+            
+            document.getElementById('total-processed').textContent = appState.stats.totalProcessed;
+            document.getElementById('objects-created').textContent = appState.stats.objectsCreated;
+            document.getElementById('success-rate').textContent = appState.stats.successRate + '%';
+            document.getElementById('last-sync').textContent = appState.stats.lastSync;
+        }
+        
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('activity-logs');
+            const timestamp = new Date().toLocaleString();
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('activity-logs').innerHTML = '';
+            addLog('Logs cleared', 'info');
+        }
+        
+        // Show alert
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            // Find the first config section to insert before
+            const firstSection = document.querySelector('.config-section');
+            firstSection.parentNode.insertBefore(alertDiv, firstSection);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('Form to Object Creator initialized', 'success');
+            addLog('Ready to configure your automation', 'info');
+        });
+        
+        // Main webhook handler for form submissions (this would be called by GHL)
+        async function handleFormSubmission(formData, formId) {
+            try {
+                addLog(`Processing form submission from form: ${formId}`, 'info');
+                
+                // Generate unique key
+                const uniqueKey = generateUniqueKey(formData);
+                
+                // Map form fields to object fields
+                const objectData = mapFormToObject(formData);
+                objectData.uniqueKey = uniqueKey;
+                
+                // Create object in GHL
+                const result = await createCustomObject(objectData);
+                
+                if (result.success) {
+                    updateStats();
+                    addLog(`Successfully created object with key: ${uniqueKey}`, 'success');
+                } else {
+                    addLog(`Failed to create object: ${result.error}`, 'error');
+                }
+                
+                return result;
+            } catch (error) {
+                addLog(`Error processing form submission: ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Map form data to object fields
+        function mapFormToObject(formData) {
+            const mappings = appState.fieldMappings;
+            const objectData = {};
+            
+            // Apply field mappings
+            mappings.forEach(mapping => {
+                if (formData[mapping.formField] && mapping.objectField) {
+                    objectData[mapping.objectField] = formData[mapping.formField];
+                }
+            });
+            
+            return objectData;
+        }
+        
+        // Create custom object via GHL API
+        async function createCustomObject(objectData) {
+            try {
+                // This would be the actual API call to GHL
+                const response = await fetch(`https://services.leadconnectorhq.com/locations/${appState.locationId}/customObjects`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${appState.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        objectType: appState.selectedObject,
+                        data: objectData
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    return { success: true, data: result };
+                } else {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+    </script>
+</body>
+</html>
