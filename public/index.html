@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form to Object Creator - GHL App</title>
+    <title>Form to Object Creator - CRM App</title>
     <style>
         * {
             margin: 0;
@@ -310,7 +310,7 @@
     <div class="container">
         <div class="header">
             <h1>🚀 Form to Object Creator</h1>
-            <p>Automatically create custom objects from GoHighLevel form submissions</p>
+            <p>Automatically create custom objects from CRM form submissions</p>
         </div>
         
         <div class="tabs">
@@ -325,12 +325,12 @@
             <div class="config-section">
                 <h3>🔗 API Connection</h3>
                 <div class="form-group">
-                    <label>GoHighLevel API Key</label>
-                    <input type="password" id="api-key" placeholder="Enter your GHL API key">
+                    <label>CRM API Key</label>
+                    <input type="password" id="api-key" placeholder="Enter your CRM API key">
                 </div>
                 <div class="form-group">
                     <label>Location ID</label>
-                    <input type="text" id="location-id" placeholder="Enter your GHL Location ID">
+                    <input type="text" id="location-id" placeholder="Enter your CRM Location ID">
                 </div>
                 <button class="btn" onclick="testConnection()">Test Connection</button>
                 <div id="connection-status"></div>
@@ -488,28 +488,28 @@
             appState.apiKey = apiKey;
             appState.locationId = locationId;
             
-            // Simulate API test (replace with actual GHL API call)
+            // Simulate API test (replace with actual CRM API call)
             addLog('Testing API connection...', 'info');
             
             setTimeout(() => {
                 document.getElementById('connection-status').innerHTML = `
                     <div class="alert alert-success">
                         <span class="status-indicator status-connected"></span>
-                        Successfully connected to GoHighLevel!
+                        Successfully connected to CRM!
                     </div>
                 `;
                 addLog('API connection successful', 'success');
             }, 1500);
         }
         
-        // Load forms from GHL
+        // Load forms from CRM
         async function loadForms() {
             if (!appState.apiKey) {
-                showAlert('Please connect to GHL first', 'warning');
+                showAlert('Please connect to CRM first', 'warning');
                 return;
             }
             
-            addLog('Loading forms from GoHighLevel...', 'info');
+            addLog('Loading forms from CRM...', 'info');
             
             // Simulate form loading (replace with actual API call)
             const forms = [
@@ -532,10 +532,10 @@
             addLog(`Loaded ${forms.length} forms`, 'success');
         }
         
-        // Load custom objects from GHL
+        // Load custom objects from CRM
         async function loadObjects() {
             if (!appState.apiKey) {
-                showAlert('Please connect to GHL first', 'warning');
+                showAlert('Please connect to CRM first', 'warning');
                 return;
             }
             
@@ -816,7 +816,7 @@
             addLog('Ready to configure your automation', 'info');
         });
         
-        // Main webhook handler for form submissions (this would be called by GHL)
+        // Main webhook handler for form submissions (this would be called by CRM)
         async function handleFormSubmission(formData, formId) {
             try {
                 addLog(`Processing form submission from form: ${formId}`, 'info');
@@ -828,7 +828,7 @@
                 const objectData = mapFormToObject(formData);
                 objectData.uniqueKey = uniqueKey;
                 
-                // Create object in GHL
+                // Create object in CRM
                 const result = await createCustomObject(objectData);
                 
                 if (result.success) {
@@ -860,10 +860,10 @@
             return objectData;
         }
         
-        // Create custom object via GHL API
+        // Create custom object via CRM API
         async function createCustomObject(objectData) {
             try {
-                // This would be the actual API call to GHL
+                // This would be the actual API call to CRM
                 const response = await fetch(`https://services.leadconnectorhq.com/locations/${appState.locationId}/customObjects`, {
                     method: 'POST',
                     headers: {
