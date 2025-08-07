@@ -553,16 +553,22 @@
             }
         }
         
-        // Select key type
-        function selectKeyType(type) {
-            document.querySelectorAll('.key-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            event.target.classList.add('selected');
-            
-            app.keyType = type;
-            addLog(`Selected ${type} key generation`, 'info');
-        }
+       // Select key type
+function selectKeyType(type) {
+    // Remove selection from all options
+    document.querySelectorAll('.key-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Find the clicked element
+    const clickedElement = event.target.closest('.key-option');
+    if (clickedElement) {
+        clickedElement.classList.add('selected');
+    }
+    
+    app.keyType = type;
+    addLog(`Selected ${type} key generation`, 'info');
+}
         
         // Add field mapping
         function addMapping() {
