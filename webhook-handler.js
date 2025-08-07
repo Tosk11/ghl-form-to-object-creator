@@ -344,7 +344,6 @@ app.get('/api/forms/:locationId', async (req, res) => {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Accept': 'application/json',
-                'Version': '2021-07-28'
             },
             timeout: 10000
         });
