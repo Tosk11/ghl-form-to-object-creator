@@ -319,28 +319,63 @@ app.post('/api/test-submission', async (req, res) => {
 });
 
 // Get CRM forms for a location
+// Get CRM forms for a location
 app.get('/api/forms/:locationId', async (req, res) => {
     try {
         const { locationId } = req.params;
         const { apiKey } = req.query;
-
-        // new code below
-      const response = await axios.get(
-            `https://rest.gohighlevel.com/v1/locations/${locationId}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Accept': 'application/json'
-                },
-                timeout: 10000
-            }
-        );
-        // new code above
+        
+        console.log('🔍 Attempting to fetch forms for location:', locationId);
+        console.log('🔑 API Key provided:', apiKey ? `${apiKey.substring(0, 10)}...` : 'No API key');
+        
+        if (!apiKey) {
+            console.log('❌ No API key provided');
+            return res.status(400).json({ error: 'API key is required' });
+        }
+        
+        if (!locationId) {
+            console.log('❌ No location ID provided');
+            return res.status(400).json({ error: 'Location ID is required' });
+        }
+        
+        const url = `https://rest.gohighlevel.com/v1/locations/${locationId}`;
+        console.log('🌐 Making request to:', url);
+        
+        const response = await axios.get(url, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Accept': 'application/json'
+            },
+            timeout: 10000
+        });
+        
+        console.log('✅ API response status:', response.status);
+        console.log('📋 Response data:', response.data);
+        
         res.json(response.data);
         
     } catch (error) {
-        console.error('❌ Error fetching forms:', error);
-        res.status(500).json({ error: 'Failed to fetch forms' });
+        console.error('❌ Error fetching forms:');
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        
+        if (error.response) {
+            console.error('Response status:', error.response.status);
+            console.error('Response data:', error.response.data);
+            res.status(error.response.status).json({ 
+                error: error.response.data?.message || error.response.data || 'API request failed',
+                details: error.response.data
+            });
+        } else if (error.code === 'ENOTFOUND') {
+            console.error('DNS resolution failed - check internet connection');
+            res.status(500).json({ error: 'Cannot reach GoHighLevel API - DNS error' });
+        } else if (error.code === 'ECONNABORTED') {
+            console.error('Request timeout');
+            res.status(500).json({ error: 'Request timeout - GoHighLevel API not responding' });
+        } else {
+            console.error('Network or other error:', error);
+            res.status(500).json({ error: `Network error: ${error.message}` });
+        }
     }
 });
 
