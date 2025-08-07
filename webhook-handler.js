@@ -325,11 +325,10 @@ app.get('/api/forms/:locationId', async (req, res) => {
         const { apiKey } = req.query;
         
         const response = await axios.get(
-            `https://services.leadconnectorhq.com/locations/${locationId}`,
+            'https://rest.gohighlevel.com/v1/locations/${locationId}',
             {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    'Version': '2021-07-28'
                 }
             }
         );
