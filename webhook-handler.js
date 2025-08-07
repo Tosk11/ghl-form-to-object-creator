@@ -235,7 +235,7 @@ async function createCustomObject(objectData, config) {
                     'Authorization': `Bearer ${config.apiKey}`,
                     'Content-Type': 'application/json',
                     'Version': '2021-07-28'
-                }
+                },
             }
         );
         
@@ -343,7 +343,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
         const response = await axios.get(url, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
                 'Version': '2021-07-28'
             },
             timeout: 10000
