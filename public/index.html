@@ -489,18 +489,39 @@
             appState.locationId = locationId;
             
             // Simulate API test (replace with actual CRM API call)
-            addLog('Testing API connection...', 'info');
-            
-            setTimeout(() => {
-                document.getElementById('connection-status').innerHTML = `
-                    <div class="alert alert-success">
-                        <span class="status-indicator status-connected"></span>
-                        Successfully connected to CRM!
-                    </div>
-                `;
-                addLog('API connection successful', 'success');
-            }, 1500);
-        }
+addLog('Testing API connection...', 'info');
+
+try {
+    // Make real API call to test CRM connection
+    const response = await fetch(`/api/forms/${locationId}?apiKey=${encodeURIComponent(apiKey)}`);
+    
+    if (response.ok) {
+        document.getElementById('connection-status').innerHTML = `
+            <div class="alert alert-success">
+                <span class="status-indicator status-connected"></span>
+                Successfully connected to CRM!
+            </div>
+        `;
+        addLog('API connection successful', 'success');
+    } else {
+        const errorData = await response.json();
+        document.getElementById('connection-status').innerHTML = `
+            <div class="alert alert-error">
+                <span class="status-indicator status-disconnected"></span>
+                Connection failed: ${errorData.error || 'Unknown error'}
+            </div>
+        `;
+        addLog(`API connection failed: ${errorData.error || 'Unknown error'}`, 'error');
+    }
+} catch (error) {
+    document.getElementById('connection-status').innerHTML = `
+        <div class="alert alert-error">
+            <span class="status-indicator status-disconnected"></span>
+            Connection failed: ${error.message}
+        </div>
+    `;
+    addLog(`Connection error: ${error.message}`, 'error');
+}
         
         // Load forms from CRM
         async function loadForms() {
