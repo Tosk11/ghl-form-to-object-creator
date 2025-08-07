@@ -345,40 +345,40 @@
                 <h3>📝 Form Configuration</h3>
                 <div class="form-group">
                     <label>Form ID</label>
-                    <input type="text" id="form-id" placeholder="Enter Form ID (e.g., form_abc123)">
+                    <input type="text" id="form-id" placeholder="Enter Form ID (e.g., eEju238FJKDbjt462YBS)">
                     <div class="form-help">
                         Go to Sites → Forms in your CRM, click your form, and copy the Form ID from the URL
                     </div>
                 </div>
             </div>
             
-<div class="section">
-    <h3>🎯 Custom Object Type</h3>
-    <div class="form-group">
-        <label>Object Type</label>
-        <input type="text" id="object-type" placeholder="Enter object type name (e.g., Incidents, Companies)">
-        <div class="form-help">
-            Enter the exact name of your custom object type from your CRM
-        </div>
-    </div>
-</div>
+            <div class="section">
+                <h3>🎯 Custom Object Type</h3>
+                <div class="form-group">
+                    <label>Object Type</label>
+                    <input type="text" id="object-type" placeholder="Enter object type name (e.g., Incidents, Companies)">
+                    <div class="form-help">
+                        Enter the exact name of your custom object type from your CRM
+                    </div>
+                </div>
+            </div>
             
             <div class="section">
                 <h3>🔑 Unique Key Generation</h3>
                 <div class="key-options">
-                    <div class="key-option" onclick="selectKeyType('uuid')">
+                    <div class="key-option" data-type="uuid">
                         <h4>UUID</h4>
                         <p>Random unique IDs</p>
                     </div>
-                    <div class="key-option" onclick="selectKeyType('sequential')">
+                    <div class="key-option" data-type="sequential">
                         <h4>Sequential</h4>
                         <p>INCIDENT-001, INCIDENT-002</p>
                     </div>
-                    <div class="key-option" onclick="selectKeyType('date')">
+                    <div class="key-option" data-type="date">
                         <h4>Date-Based</h4>
                         <p>20250807-143052</p>
                     </div>
-                    <div class="key-option" onclick="selectKeyType('composite')">
+                    <div class="key-option" data-type="composite">
                         <h4>Composite</h4>
                         <p>SMITH-JOHN-2025</p>
                     </div>
@@ -487,6 +487,29 @@
             event.target.classList.add('active');
         }
         
+        // Add log entry - FIXED VERSION
+        function addLog(message, type = 'info') {
+            try {
+                const logs = document.getElementById('activity-logs');
+                if (logs) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'log-entry';
+                    logEntry.innerHTML = `
+                        <span class="log-time">[${timestamp}]</span>
+                        <span class="log-${type}">${message}</span>
+                    `;
+                    logs.appendChild(logEntry);
+                    logs.scrollTop = logs.scrollHeight;
+                }
+                
+                // Also log to console for debugging
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            } catch (error) {
+                console.error('Logging error:', error);
+            }
+        }
+        
         // Test API connection
         async function testConnection() {
             const apiKey = document.getElementById('api-key').value;
@@ -517,58 +540,44 @@
             }
         }
         
-        // Load custom object types
-        async function loadObjects() {
-            if (!app.apiKey || !app.locationId) {
-                showStatus('', 'Please test connection first', 'warning');
-                return;
-            }
-            
-            addLog('Loading custom object types...', 'info');
-            
+        // Select key type - FIXED VERSION
+        function selectKeyType(type, element) {
             try {
-                const response = await fetch(`/api/objects/${app.locationId}?apiKey=${encodeURIComponent(app.apiKey)}`);
+                // Remove selection from all options
+                document.querySelectorAll('.key-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    const objects = data.schemas || [];
-                    
-                    const select = document.getElementById('object-type');
-                    select.innerHTML = '<option value="">Choose object type...</option>';
-                    
-                    objects.forEach(obj => {
-                        const option = document.createElement('option');
-                        option.value = obj.id;
-                        option.textContent = obj.name;
-                        select.appendChild(option);
-                    });
-                    
-                    addLog(`Loaded ${objects.length} object types`, 'success');
+                // Add selection to clicked element
+                if (element) {
+                    element.classList.add('selected');
                 } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to load objects');
+                    // Fallback: find by data attribute
+                    const targetElement = document.querySelector(`[data-type="${type}"]`);
+                    if (targetElement) {
+                        targetElement.classList.add('selected');
+                    }
                 }
+                
+                app.keyType = type;
+                addLog(`Selected ${type} key generation`, 'info');
             } catch (error) {
-                addLog(`Error loading objects: ${error.message}`, 'error');
+                console.error('Error selecting key type:', error);
             }
         }
         
-       // Select key type
-function selectKeyType(type) {
-    // Remove selection from all options
-    document.querySelectorAll('.key-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    
-    // Find the clicked element
-    const clickedElement = event.target.closest('.key-option');
-    if (clickedElement) {
-        clickedElement.classList.add('selected');
-    }
-    
-    app.keyType = type;
-    addLog(`Selected ${type} key generation`, 'info');
-}
+        // Set up key type click handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.key-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    selectKeyType(type, this);
+                });
+            });
+            
+            addLog('CRM Form-to-Object Automation initialized', 'success');
+            addLog('Ready to configure webhook automation', 'info');
+        });
         
         // Add field mapping
         function addMapping() {
@@ -611,7 +620,10 @@ function selectKeyType(type) {
                 ['email', 'email_address'],
                 ['phone', 'phone_number'],
                 ['company', 'company_name'],
-                ['message', 'description']
+                ['message', 'description'],
+                ['incidentType', 'incident_type'],
+                ['priority', 'priority'],
+                ['status', 'status']
             ];
             
             commonMappings.forEach(([formField, objectField]) => {
@@ -659,6 +671,8 @@ function selectKeyType(type) {
                 keyType: app.keyType,
                 keyConfig: app.keyConfig
             };
+            
+            addLog('Saving configuration...', 'info');
             
             try {
                 const response = await fetch('/api/configure', {
@@ -725,22 +739,6 @@ function selectKeyType(type) {
             document.getElementById('success-rate').textContent = app.stats.successRate + '%';
         }
         
-        // Add log entry
-        function addLog(message, type = 'info') {
-            const logs = document.getElementById('activity-logs');
-            const timestamp = new Date().toLocaleTimeString();
-            
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-            logEntry.innerHTML = `
-                <span class="log-time">[${timestamp}]</span>
-                <span class="log-${type}">${message}</span>
-            `;
-            
-            logs.appendChild(logEntry);
-            logs.scrollTop = logs.scrollHeight;
-        }
-        
         // Show status message
         function showStatus(elementId, message, type) {
             const statusElement = elementId ? document.getElementById(elementId) : null;
@@ -757,21 +755,20 @@ function selectKeyType(type) {
         
         // Download logs
         function downloadLogs() {
-            const logs = document.getElementById('activity-logs').innerText;
-            const blob = new Blob([logs], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `webhook-logs-${new Date().toISOString().split('T')[0]}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
+            try {
+                const logs = document.getElementById('activity-logs').innerText;
+                const blob = new Blob([logs], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `webhook-logs-${new Date().toISOString().split('T')[0]}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error downloading logs:', error);
+                addLog('Error downloading logs', 'error');
+            }
         }
-        
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            addLog('CRM Form-to-Object Automation initialized', 'success');
-            addLog('Ready to configure webhook automation', 'info');
-        });
     </script>
 </body>
 </html>
