@@ -323,19 +323,19 @@ app.get('/api/forms/:locationId', async (req, res) => {
     try {
         const { locationId } = req.params;
         const { apiKey } = req.query;
-        
-        const response = await axios.get(
+
+        // new code below
+      const response = await axios.get(
             `https://rest.gohighlevel.com/v1/locations/${locationId}`,
             {
                 headers: {
-                    `Authorization`: `Bearer ${apiKey}`
-                   'Accept': 'application/json'
-},
-timeout: 10000 
-                }
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Accept': 'application/json'
+                },
+                timeout: 10000
             }
         );
-        
+        // new code above
         res.json(response.data);
         
     } catch (error) {
