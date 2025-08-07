@@ -1,4 +1,4 @@
-// webhook-handler.js - Server-side handler for GHL form submissions
+// webhook-handler.js - Server-side handler for CRM form submissions
 const express = require('express');
 const crypto = require('crypto');
 const axios = require('axios');
@@ -16,7 +16,7 @@ app.post('/webhook/form-submission', async (req, res) => {
     try {
         console.log('📨 Form submission received:', req.body);
         
-        // Extract form data from GHL webhook
+        // Extract form data from CRM webhook
         const {
             locationId,
             formId,
@@ -74,7 +74,7 @@ async function processFormSubmission(formData, config) {
         
         console.log('📋 Mapped object data:', objectData);
         
-        // Create custom object via GHL API
+        // Create custom object via CRM API
         const objectResult = await createCustomObject(objectData, config);
         
         return {
@@ -221,7 +221,7 @@ function mapFormToObject(formData, fieldMappings) {
     return objectData;
 }
 
-// Create custom object via GHL API
+// Create custom object via CRM API
 async function createCustomObject(objectData, config) {
     try {
         const response = await axios.post(
@@ -318,7 +318,7 @@ app.post('/api/test-submission', async (req, res) => {
     }
 });
 
-// Get GHL forms for a location
+// Get CRM forms for a location
 app.get('/api/forms/:locationId', async (req, res) => {
     try {
         const { locationId } = req.params;
@@ -342,7 +342,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
     }
 });
 
-// Get GHL custom objects for a location
+// Get CRM custom objects for a location
 app.get('/api/objects/:locationId', async (req, res) => {
     try {
         const { locationId } = req.params;
