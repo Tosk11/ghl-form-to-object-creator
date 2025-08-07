@@ -337,7 +337,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
             return res.status(400).json({ error: 'Location ID is required' });
         }
         
-        const url = `https://services.leadconnectorhq.com/locations/${locationId}/forms`;
+        const url = `https://services.leadconnectorhq.com/locations/forms`;
         console.log('🌐 Making request to:', url);
         
         const response = await axios.get(url, {
