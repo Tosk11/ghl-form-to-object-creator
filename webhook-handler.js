@@ -1,213 +1,72 @@
-// webhook-handler.js - Server-side handler for CRM form submissions
+// webhook-handler.js - Clean CRM Form-to-Object Webhook Automation
 const express = require('express');
-const crypto = require('crypto');
 const axios = require('axios');
 const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public')); // Serve the HTML interface
+app.use(express.static('public'));
 
-// Store app configurations (in production, use a database)
-const appConfigurations = new Map();
+// Store configurations (in production, use a database)
+const configurations = new Map();
 
-// Webhook endpoint for form submissions
-app.post('/webhook/form-submission', async (req, res) => {
-    try {
-        console.log('📨 Form submission received:', req.body);
-        
-        // Extract form data from CRM webhook
-        const {
-            locationId,
-            formId,
-            contactId,
-            submissionData,
-            type
-        } = req.body;
+// Activity logs for monitoring
+const activityLogs = [];
 
-        // Get app configuration for this location
-        const config = appConfigurations.get(locationId);
-        if (!config) {
-            console.log('❌ No configuration found for location:', locationId);
-            return res.status(400).json({ error: 'App not configured for this location' });
-        }
-
-        // Check if this form is configured for object creation
-        if (config.formId !== formId) {
-            console.log('ℹ️ Form not configured for object creation:', formId);
-            return res.status(200).json({ message: 'Form not configured for processing' });
-        }
-
-        // Process the form submission
-        const result = await processFormSubmission(submissionData, config);
-        
-        if (result.success) {
-            console.log('✅ Successfully created custom object:', result.objectId);
-            res.status(200).json({ 
-                success: true, 
-                objectId: result.objectId,
-                uniqueKey: result.uniqueKey
-            });
-        } else {
-            console.log('❌ Failed to create custom object:', result.error);
-            res.status(500).json({ error: result.error });
-        }
-
-    } catch (error) {
-        console.error('❌ Webhook processing error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+// Add log entry
+function addLog(message, type = 'info') {
+    const timestamp = new Date().toISOString();
+    const logEntry = { timestamp, message, type };
+    activityLogs.push(logEntry);
+    
+    // Keep only last 100 logs
+    if (activityLogs.length > 100) {
+        activityLogs.shift();
     }
-});
-
-// Process form submission and create custom object
-async function processFormSubmission(formData, config) {
-    try {
-        console.log('🔄 Processing form data:', formData);
-        
-        // Generate unique key
-        const uniqueKey = generateUniqueKey(formData, config.keyType, config.keyConfig);
-        console.log('🔑 Generated unique key:', uniqueKey);
-        
-        // Map form fields to object fields
-        const objectData = mapFormToObject(formData, config.fieldMappings);
-        objectData.uniqueKey = uniqueKey;
-        
-        console.log('📋 Mapped object data:', objectData);
-        
-        // Create custom object via CRM API
-        const objectResult = await createCustomObject(objectData, config);
-        
-        return {
-            success: true,
-            objectId: objectResult.id,
-            uniqueKey: uniqueKey
-        };
-        
-    } catch (error) {
-        console.error('❌ Error processing form submission:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
+    
+    // Console log with emojis for Railway logs
+    const emoji = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+    console.log(`${emoji} ${message}`);
 }
 
-// Generate unique key based on configuration
-function generateUniqueKey(formData, keyType, keyConfig) {
+// Generate unique keys
+function generateUniqueKey(formData, keyType = 'uuid', keyConfig = {}) {
     const timestamp = new Date();
     
     switch (keyType) {
         case 'uuid':
-            return generateUUID(keyConfig);
+            return 'obj_' + Math.random().toString(36).substr(2, 12);
             
         case 'sequential':
-            return generateSequentialKey(keyConfig);
+            const prefix = keyConfig.prefix || 'ITEM';
+            const counter = configurations.size + Math.floor(Math.random() * 1000) + 1;
+            return `${prefix}-${String(counter).padStart(3, '0')}`;
             
         case 'date':
-            return generateDateKey(timestamp, keyConfig);
+            const year = timestamp.getFullYear();
+            const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+            const day = String(timestamp.getDate()).padStart(2, '0');
+            const hour = String(timestamp.getHours()).padStart(2, '0');
+            const minute = String(timestamp.getMinutes()).padStart(2, '0');
+            const second = String(timestamp.getSeconds()).padStart(2, '0');
+            return `${year}${month}${day}-${hour}${minute}${second}`;
             
         case 'composite':
-            return generateCompositeKey(formData, keyConfig);
+            const lastName = formData.lastName || formData.last_name || 'UNKNOWN';
+            const firstName = formData.firstName || formData.first_name || 'UNKNOWN';
+            const year = timestamp.getFullYear();
+            return `${lastName}-${firstName}-${year}`.toUpperCase();
             
         default:
-            return 'obj_' + Math.random().toString(36).substr(2, 9);
+            return 'key_' + Date.now();
     }
-}
-
-// UUID generation
-function generateUUID(config = {}) {
-    const format = config.format || 'standard';
-    
-    switch (format) {
-        case 'short':
-            return Math.random().toString(36).substr(2, 15) + Math.random().toString(36).substr(2, 7);
-        case 'numeric':
-            return Date.now().toString() + Math.floor(Math.random() * 1000);
-        default:
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-    }
-}
-
-// Sequential key generation
-function generateSequentialKey(config = {}) {
-    const prefix = config.prefix || 'OBJ';
-    const startingNumber = config.startingNumber || 1;
-    const padding = config.padding || 3;
-    
-    // In production, you'd get the next number from database
-    const nextNumber = startingNumber + Math.floor(Math.random() * 1000);
-    
-    return prefix + '-' + String(nextNumber).padStart(padding, '0');
-}
-
-// Date-based key generation
-function generateDateKey(timestamp, config = {}) {
-    const format = config.format || 'YYYYMMDD-HHMMSS';
-    const timezone = config.timezone || 'UTC';
-    
-    // Convert to specified timezone
-    const date = new Date(timestamp.toLocaleString("en-US", {timeZone: timezone}));
-    
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    const second = String(date.getSeconds()).padStart(2, '0');
-    
-    switch (format) {
-        case 'YYYY-MM-DD-HH-MM-SS':
-            return `${year}-${month}-${day}-${hour}-${minute}-${second}`;
-        case 'YYYYMMDD':
-            return `${year}${month}${day}`;
-        case 'YYMMDD-HHMM':
-            return `${String(year).substr(2)}${month}${day}-${hour}${minute}`;
-        default:
-            return `${year}${month}${day}-${hour}${minute}${second}`;
-    }
-}
-
-// Composite key generation
-function generateCompositeKey(formData, config = {}) {
-    const pattern = config.pattern || '{lastName}-{firstName}-{year}';
-    const separator = config.separator || '-';
-    const caseConversion = config.caseConversion || 'UPPERCASE';
-    
-    let key = pattern;
-    
-    // Replace placeholders with form data
-    Object.keys(formData).forEach(field => {
-        const placeholder = `{${field}}`;
-        if (key.includes(placeholder)) {
-            key = key.replace(placeholder, formData[field] || 'UNKNOWN');
-        }
-    });
-    
-    // Add current year if {year} placeholder
-    key = key.replace('{year}', new Date().getFullYear());
-    
-    // Apply case conversion
-    switch (caseConversion) {
-        case 'UPPERCASE':
-            key = key.toUpperCase();
-            break;
-        case 'lowercase':
-            key = key.toLowerCase();
-            break;
-        // 'No Change' - do nothing
-    }
-    
-    return key;
 }
 
 // Map form data to object fields
 function mapFormToObject(formData, fieldMappings) {
     const objectData = {};
     
+    // Apply configured field mappings
     fieldMappings.forEach(mapping => {
         if (formData[mapping.formField] && mapping.objectField) {
             objectData[mapping.objectField] = formData[mapping.formField];
@@ -216,7 +75,7 @@ function mapFormToObject(formData, fieldMappings) {
     
     // Add metadata
     objectData.createdAt = new Date().toISOString();
-    objectData.source = 'form_submission';
+    objectData.source = 'webhook_automation';
     
     return objectData;
 }
@@ -224,6 +83,8 @@ function mapFormToObject(formData, fieldMappings) {
 // Create custom object via CRM API
 async function createCustomObject(objectData, config) {
     try {
+        addLog(`Creating ${config.objectType} object...`, 'info');
+        
         const response = await axios.post(
             `https://services.leadconnectorhq.com/locations/${config.locationId}/customObjects`,
             {
@@ -236,54 +97,123 @@ async function createCustomObject(objectData, config) {
                     'Content-Type': 'application/json',
                     'Version': '2021-07-28'
                 },
+                timeout: 10000
             }
         );
         
-        console.log('✅ Custom object created:', response.data);
-        return response.data;
+        addLog(`Custom object created successfully: ${response.data.id}`, 'success');
+        return { success: true, data: response.data };
         
     } catch (error) {
-        console.error('❌ Error creating custom object:', error.response?.data || error.message);
-        throw new Error(`Failed to create custom object: ${error.response?.data?.message || error.message}`);
+        const errorMsg = error.response?.data?.message || error.message;
+        addLog(`Failed to create custom object: ${errorMsg}`, 'error');
+        throw new Error(`Failed to create custom object: ${errorMsg}`);
     }
 }
 
-// Configuration endpoints for the app interface
-app.post('/api/configure', (req, res) => {
+// MAIN WEBHOOK ENDPOINT - Receives form submissions from CRM
+app.post('/webhook/form-submission', async (req, res) => {
     try {
-        const {
-            locationId,
-            apiKey,
-            formId,
-            objectType,
-            fieldMappings,
-            keyType,
-            keyConfig
-        } = req.body;
+        addLog('📨 Webhook received form submission', 'info');
+        console.log('Raw webhook data:', JSON.stringify(req.body, null, 2));
         
-        // Store configuration (in production, save to database)
-        appConfigurations.set(locationId, {
-            locationId,
-            apiKey,
-            formId,
-            objectType,
-            fieldMappings,
-            keyType,
-            keyConfig,
-            updatedAt: new Date().toISOString()
+        // Extract data from webhook payload
+        const formData = req.body.data || req.body;
+        const locationId = req.body.extras?.locationId || req.body.locationId;
+        const formId = req.body.extras?.formId || req.body.formId;
+        
+        addLog(`Form ID: ${formId}, Location: ${locationId}`, 'info');
+        
+        // Find configuration for this location and form
+        const configKey = `${locationId}_${formId}`;
+        const config = configurations.get(configKey);
+        
+        if (!config) {
+            addLog(`No configuration found for ${configKey}`, 'warning');
+            return res.status(200).json({ 
+                success: false, 
+                message: 'No configuration found for this form' 
+            });
+        }
+        
+        // Generate unique key
+        const uniqueKey = generateUniqueKey(formData, config.keyType, config.keyConfig);
+        addLog(`Generated unique key: ${uniqueKey}`, 'info');
+        
+        // Map form fields to object fields
+        const objectData = mapFormToObject(formData, config.fieldMappings);
+        objectData.uniqueKey = uniqueKey;
+        
+        addLog(`Mapped object data: ${JSON.stringify(objectData)}`, 'info');
+        
+        // Create custom object
+        const result = await createCustomObject(objectData, config);
+        
+        addLog('🎉 Webhook processing completed successfully', 'success');
+        
+        res.status(200).json({
+            success: true,
+            objectId: result.data.id,
+            uniqueKey: uniqueKey,
+            message: 'Object created successfully'
         });
         
-        console.log('⚙️ Configuration saved for location:', locationId);
-        res.json({ success: true, message: 'Configuration saved successfully' });
+    } catch (error) {
+        addLog(`Webhook error: ${error.message}`, 'error');
+        console.error('Webhook processing error:', error);
+        
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Save configuration
+app.post('/api/configure', (req, res) => {
+    try {
+        const { locationId, apiKey, formId, objectType, fieldMappings, keyType, keyConfig } = req.body;
+        
+        if (!locationId || !apiKey || !formId || !objectType) {
+            return res.status(400).json({ error: 'Missing required configuration fields' });
+        }
+        
+        const configKey = `${locationId}_${formId}`;
+        const configuration = {
+            locationId,
+            apiKey,
+            formId,
+            objectType,
+            fieldMappings: fieldMappings || [],
+            keyType: keyType || 'uuid',
+            keyConfig: keyConfig || {},
+            createdAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        };
+        
+        configurations.set(configKey, configuration);
+        
+        addLog(`Configuration saved for form ${formId} in location ${locationId}`, 'success');
+        addLog(`Object type: ${objectType}, Key type: ${keyType}`, 'info');
+        addLog(`Field mappings: ${fieldMappings.length} mappings configured`, 'info');
+        
+        res.json({ 
+            success: true, 
+            message: 'Configuration saved successfully',
+            configKey: configKey
+        });
         
     } catch (error) {
-        console.error('❌ Error saving configuration:', error);
+        addLog(`Configuration error: ${error.message}`, 'error');
         res.status(500).json({ error: 'Failed to save configuration' });
     }
 });
 
-app.get('/api/configure/:locationId', (req, res) => {
-    const config = appConfigurations.get(req.params.locationId);
+// Get configuration
+app.get('/api/configure/:locationId/:formId', (req, res) => {
+    const configKey = `${req.params.locationId}_${req.params.formId}`;
+    const config = configurations.get(configKey);
+    
     if (config) {
         // Don't return the API key for security
         const { apiKey, ...safeConfig } = config;
@@ -293,130 +223,119 @@ app.get('/api/configure/:locationId', (req, res) => {
     }
 });
 
-// Test endpoint
+// Test webhook processing with sample data
 app.post('/api/test-submission', async (req, res) => {
     try {
+        const { locationId } = req.body;
+        
+        if (!locationId) {
+            return res.status(400).json({ error: 'Location ID required for testing' });
+        }
+        
+        // Find any configuration for this location
+        let testConfig = null;
+        for (const [key, config] of configurations) {
+            if (config.locationId === locationId) {
+                testConfig = config;
+                break;
+            }
+        }
+        
+        if (!testConfig) {
+            return res.status(400).json({ error: 'No configuration found for this location' });
+        }
+        
+        addLog('🧪 Testing webhook with sample data', 'info');
+        
+        // Sample test data
         const testData = {
             firstName: 'John',
             lastName: 'Doe',
             email: 'john.doe@example.com',
             phone: '555-0123',
-            company: 'Test Company'
+            company: 'Test Company',
+            message: 'This is a test submission'
         };
         
-        const config = appConfigurations.get(req.body.locationId);
-        if (!config) {
-            return res.status(400).json({ error: 'No configuration found' });
-        }
+        // Generate unique key
+        const uniqueKey = generateUniqueKey(testData, testConfig.keyType, testConfig.keyConfig);
         
-        const result = await processFormSubmission(testData, config);
-        res.json(result);
+        // Map form fields to object fields
+        const objectData = mapFormToObject(testData, testConfig.fieldMappings);
+        objectData.uniqueKey = uniqueKey;
         
-    } catch (error) {
-        console.error('❌ Test submission error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get CRM forms for a location
-app.get('/api/forms/:locationId', async (req, res) => {
-    try {
-        const { locationId } = req.params;
-        const { apiKey } = req.query;
+        // Create custom object
+        const result = await createCustomObject(objectData, testConfig);
         
-        console.log('🔍 Attempting to fetch forms for location:', locationId);
-        console.log('🔑 API Key provided:', apiKey ? `${apiKey.substring(0, 10)}...` : 'No API key');
+        addLog('✅ Test completed successfully', 'success');
         
-        if (!apiKey) {
-            console.log('❌ No API key provided');
-            return res.status(400).json({ error: 'API key is required' });
-        }
-        
-        if (!locationId) {
-            console.log('❌ No location ID provided');
-            return res.status(400).json({ error: 'Location ID is required' });
-        }
-        
-        const url = `https://services.leadconnectorhq.com/locations/forms`;
-        console.log('🌐 Making request to:', url);
-        
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Accept': 'application/json',
-            },
-            timeout: 10000
+        res.json({
+            success: true,
+            message: 'Test webhook completed successfully',
+            objectId: result.data.id,
+            uniqueKey: uniqueKey,
+            testData: objectData
         });
         
-        console.log('✅ API response status:', response.status);
-        console.log('📋 Response data:', response.data);
-        
-        res.json(response.data);
-        
     } catch (error) {
-        console.error('❌ Error fetching forms:');
-        console.error('Error message:', error.message);
-        console.error('Error code:', error.code);
-        
-        if (error.response) {
-            console.error('Response status:', error.response.status);
-            console.error('Response data:', error.response.data);
-            res.status(error.response.status).json({ 
-                error: error.response.data?.message || error.response.data || 'API request failed',
-                details: error.response.data
-            });
-        } else if (error.code === 'ENOTFOUND') {
-            console.error('DNS resolution failed - check internet connection');
-            res.status(500).json({ error: 'Cannot reach GoHighLevel API - DNS error' });
-        } else if (error.code === 'ECONNABORTED') {
-            console.error('Request timeout');
-            res.status(500).json({ error: 'Request timeout - GoHighLevel API not responding' });
-        } else {
-            console.error('Network or other error:', error);
-            res.status(500).json({ error: `Network error: ${error.message}` });
-        }
+        addLog(`Test error: ${error.message}`, 'error');
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
     }
 });
 
-// Get CRM custom objects for a location
-app.get('/api/objects/:locationId', async (req, res) => {
-    try {
-        const { locationId } = req.params;
-        const { apiKey } = req.query;
-        
-        const response = await axios.get(
-            `https://services.leadconnectorhq.com/locations/${locationId}/customObjects/schemas`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Version': '2021-07-28'
-                }
-            }
-        );
-        
-        res.json(response.data);
-        
-    } catch (error) {
-        console.error('❌ Error fetching custom objects:', error);
-        res.status(500).json({ error: 'Failed to fetch custom objects' });
-    }
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
+// Get activity logs
+app.get('/api/logs', (req, res) => {
     res.json({ 
-        status: 'healthy', 
+        logs: activityLogs.slice(-50), // Return last 50 logs
+        totalLogs: activityLogs.length 
+    });
+});
+
+// Clear activity logs
+app.delete('/api/logs', (req, res) => {
+    activityLogs.length = 0;
+    addLog('Logs cleared', 'info');
+    res.json({ success: true, message: 'Logs cleared' });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-        activeConfigurations: appConfigurations.size
+        activeConfigurations: configurations.size,
+        totalLogs: activityLogs.length,
+        uptime: process.uptime()
+    });
+});
+
+// Get app statistics
+app.get('/api/stats', (req, res) => {
+    const successLogs = activityLogs.filter(log => log.type === 'success').length;
+    const errorLogs = activityLogs.filter(log => log.type === 'error').length;
+    const totalProcessed = successLogs + errorLogs;
+    const successRate = totalProcessed > 0 ? Math.round((successLogs / totalProcessed) * 100) : 100;
+    
+    res.json({
+        activeConfigurations: configurations.size,
+        totalProcessed: totalProcessed,
+        successfulSubmissions: successLogs,
+        successRate: successRate,
+        lastActivity: activityLogs.length > 0 ? activityLogs[activityLogs.length - 1].timestamp : null
     });
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Form to Object Creator app running on port ${PORT}`);
-    console.log(`📋 Webhook endpoint: http://localhost:${PORT}/webhook/form-submission`);
-    console.log(`⚙️ Configuration API: http://localhost:${PORT}/api/configure`);
+    addLog(`🚀 CRM Form-to-Object Automation server running on port ${PORT}`, 'success');
+    addLog(`📋 Webhook endpoint: /webhook/form-submission`, 'info');
+    addLog(`⚙️ Configuration API: /api/configure`, 'info');
+    addLog(`💚 Health check: /health`, 'info');
+    console.log(`\n🎯 WEBHOOK URL FOR CRM:\nhttps://your-railway-domain.up.railway.app/webhook/form-submission\n`);
 });
 
 module.exports = app;
