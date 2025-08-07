@@ -338,7 +338,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
             return res.status(400).json({ error: 'Location ID is required' });
         }
         
-        const url = `https://rest.gohighlevel.com/v1/locations/${locationId}`;
+        const url = `https://rest.gohighlevel.com/v1/locations/${locationId}/forms`;
         console.log('🌐 Making request to:', url);
         
         const response = await axios.get(url, {
