@@ -1,7 +1,7 @@
 {
-  "name": "ghl-form-to-object-creator",
+  "name": "crm-form-to-object-creator",
   "version": "1.0.0",
-  "description": "GoHighLevel app to automatically create custom objects from form submissions",
+  "description": "CRM app to automatically create custom objects from form submissions",
   "main": "webhook-handler.js",
   "scripts": {
     "start": "node webhook-handler.js"
