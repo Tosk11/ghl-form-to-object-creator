@@ -325,7 +325,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
         const { apiKey } = req.query;
         
         const response = await axios.get(
-            `https://services.leadconnectorhq.com/locations/${locationId}/forms`,
+            `https://services.leadconnectorhq.com/locations/${locationId}`,
             {
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
