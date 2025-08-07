@@ -328,7 +328,7 @@ app.get('/api/forms/:locationId', async (req, res) => {
             'https://rest.gohighlevel.com/v1/locations/${locationId}',
             {
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
+                    'Authorization': `Bearer ${apiKey}`
                 }
             }
         );
