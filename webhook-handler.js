@@ -319,7 +319,6 @@ app.post('/api/test-submission', async (req, res) => {
 });
 
 // Get CRM forms for a location
-// Get CRM forms for a location
 app.get('/api/forms/:locationId', async (req, res) => {
     try {
         const { locationId } = req.params;
@@ -338,13 +337,14 @@ app.get('/api/forms/:locationId', async (req, res) => {
             return res.status(400).json({ error: 'Location ID is required' });
         }
         
-        const url = `https://rest.gohighlevel.com/v1/locations/${locationId}/forms`;
+        const url = `https://services.leadconnectorhq.com/locations/${locationId}/forms`;
         console.log('🌐 Making request to:', url);
         
         const response = await axios.get(url, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Accept': 'application/json'
+                'Version': '2021-07-28'
             },
             timeout: 10000
         });
