@@ -42,7 +42,7 @@ function generateUniqueKey(formData, keyType = 'uuid', keyConfig = {}) {
             const counter = configurations.size + Math.floor(Math.random() * 1000) + 1;
             return `${prefix}-${String(counter).padStart(3, '0')}`;
             
-        case 'date':
+        case 'date': {
             const year = timestamp.getFullYear();
             const month = String(timestamp.getMonth() + 1).padStart(2, '0');
             const day = String(timestamp.getDate()).padStart(2, '0');
@@ -50,18 +50,19 @@ function generateUniqueKey(formData, keyType = 'uuid', keyConfig = {}) {
             const minute = String(timestamp.getMinutes()).padStart(2, '0');
             const second = String(timestamp.getSeconds()).padStart(2, '0');
             return `${year}${month}${day}-${hour}${minute}${second}`;
+        }
             
-        case 'composite':
+        case 'composite': {
             const lastName = formData.lastName || formData.last_name || 'UNKNOWN';
             const firstName = formData.firstName || formData.first_name || 'UNKNOWN';
-            const year = timestamp.getFullYear();
-            return `${lastName}-${firstName}-${year}`.toUpperCase();
+            const currentYear = timestamp.getFullYear();
+            return `${lastName}-${firstName}-${currentYear}`.toUpperCase();
+        }
             
         default:
             return 'key_' + Date.now();
     }
 }
-
 // Map form data to object fields
 function mapFormToObject(formData, fieldMappings) {
     const objectData = {};
