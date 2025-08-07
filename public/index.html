@@ -357,6 +357,11 @@
                 </div>
                 <button class="btn" onclick="loadObjects()">Load Objects</button>
             </div>
+            
+            <div class="config-section">
+                <h3>💾 Save Configuration</h3>
+                <button class="btn btn-success" onclick="saveConfiguration()">Save Configuration</button>
+            </div>
         </div>
         
         <!-- Mapping Tab -->
@@ -427,12 +432,12 @@
                 <h3>📊 Activity Log</h3>
                 <div class="logs-container" id="activity-logs">
                     <div class="log-entry">
-                        <span class="log-timestamp">[2025-07-29 14:30:52]</span>
+                        <span class="log-timestamp">[2025-08-07 19:30:52]</span>
                         <span class="log-info">App initialized successfully</span>
                     </div>
                     <div class="log-entry">
-                        <span class="log-timestamp">[2025-07-29 14:30:53]</span>
-                        <span class="log-info">Waiting for configuration...</span>
+                        <span class="log-timestamp">[2025-08-07 19:30:53]</span>
+                        <span class="log-info">Ready to configure your automation</span>
                     </div>
                 </div>
                 <button class="btn" onclick="clearLogs()">Clear Logs</button>
@@ -474,7 +479,7 @@
             event.target.classList.add('active');
         }
         
-        // API Connection
+        // API Connection - Now connects to real backend
         async function testConnection() {
             const apiKey = document.getElementById('api-key').value;
             const locationId = document.getElementById('location-id').value;
@@ -488,114 +493,176 @@
             appState.apiKey = apiKey;
             appState.locationId = locationId;
             
-            // Simulate API test (replace with actual CRM API call)
-addLog('Testing API connection...', 'info');
-
-try {
-    // Make real API call to test CRM connection
-    const response = await fetch(`/api/forms/${locationId}?apiKey=${encodeURIComponent(apiKey)}`);
-    
-    if (response.ok) {
-        document.getElementById('connection-status').innerHTML = `
-            <div class="alert alert-success">
-                <span class="status-indicator status-connected"></span>
-                Successfully connected to CRM!
-            </div>
-        `;
-        addLog('API connection successful', 'success');
-    } else {
-        const errorData = await response.json();
-        document.getElementById('connection-status').innerHTML = `
-            <div class="alert alert-error">
-                <span class="status-indicator status-disconnected"></span>
-                Connection failed: ${errorData.error || 'Unknown error'}
-            </div>
-        `;
-        addLog(`API connection failed: ${errorData.error || 'Unknown error'}`, 'error');
-    }
-} catch (error) {
-    document.getElementById('connection-status').innerHTML = `
-        <div class="alert alert-error">
-            <span class="status-indicator status-disconnected"></span>
-            Connection failed: ${error.message}
-        </div>
-    `;
-    addLog(`Connection error: ${error.message}`, 'error');
-}
+            addLog('Testing API connection...', 'info');
+            
+            try {
+                // Test basic server connectivity first
+                const response = await fetch('/health');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('connection-status').innerHTML = `
+                        <div class="alert alert-success">
+                            <span class="status-indicator status-connected"></span>
+                            Server connected! Status: ${data.status}
+                        </div>
+                    `;
+                    addLog('Server connection successful', 'success');
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                document.getElementById('connection-status').innerHTML = `
+                    <div class="alert alert-error">
+                        <span class="status-indicator status-disconnected"></span>
+                        Connection failed: ${error.message}
+                    </div>
+                `;
+                addLog(`Connection error: ${error.message}`, 'error');
+            }
+        }
         
-        // Load forms from CRM
+        // Load forms from CRM - Now uses real backend API
         async function loadForms() {
-            if (!appState.apiKey) {
-                showAlert('Please connect to CRM first', 'warning');
+            if (!appState.apiKey || !appState.locationId) {
+                showAlert('Please test connection first', 'warning');
                 return;
             }
             
             addLog('Loading forms from CRM...', 'info');
             
-            // Simulate form loading (replace with actual API call)
-            const forms = [
-                { id: 'form1', name: 'Contact Us Form' },
-                { id: 'form2', name: 'Lead Capture Form' },
-                { id: 'form3', name: 'Newsletter Signup' },
-                { id: 'form4', name: 'Demo Request Form' }
-            ];
-            
-            const formSelect = document.getElementById('form-select');
-            formSelect.innerHTML = '<option value="">Choose a form...</option>';
-            
-            forms.forEach(form => {
-                const option = document.createElement('option');
-                option.value = form.id;
-                option.textContent = form.name;
-                formSelect.appendChild(option);
-            });
-            
-            addLog(`Loaded ${forms.length} forms`, 'success');
+            try {
+                const response = await fetch(`/api/forms/${appState.locationId}?apiKey=${encodeURIComponent(appState.apiKey)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const forms = data.forms || [];
+                    
+                    const formSelect = document.getElementById('form-select');
+                    formSelect.innerHTML = '<option value="">Choose a form...</option>';
+                    
+                    forms.forEach(form => {
+                        const option = document.createElement('option');
+                        option.value = form.id;
+                        option.textContent = form.name;
+                        formSelect.appendChild(option);
+                    });
+                    
+                    addLog(`Loaded ${forms.length} forms`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load forms');
+                }
+            } catch (error) {
+                addLog(`Error loading forms: ${error.message}`, 'error');
+                showAlert(`Failed to load forms: ${error.message}`, 'error');
+            }
         }
         
-        // Load custom objects from CRM
+        // Load custom objects from CRM - Now uses real backend API
         async function loadObjects() {
-            if (!appState.apiKey) {
-                showAlert('Please connect to CRM first', 'warning');
+            if (!appState.apiKey || !appState.locationId) {
+                showAlert('Please test connection first', 'warning');
                 return;
             }
             
             addLog('Loading custom objects...', 'info');
             
-            // Simulate object loading (replace with actual API call)
-            const objects = [
-                { id: 'obj1', name: 'Companies' },
-                { id: 'obj2', name: 'Properties' },
-                { id: 'obj3', name: 'Projects' },
-                { id: 'obj4', name: 'Vendors' }
-            ];
+            try {
+                const response = await fetch(`/api/objects/${appState.locationId}?apiKey=${encodeURIComponent(appState.apiKey)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const objects = data.schemas || [];
+                    
+                    const objectSelect = document.getElementById('object-select');
+                    objectSelect.innerHTML = '<option value="">Choose an object type...</option>';
+                    
+                    objects.forEach(obj => {
+                        const option = document.createElement('option');
+                        option.value = obj.id;
+                        option.textContent = obj.name;
+                        objectSelect.appendChild(option);
+                    });
+                    
+                    addLog(`Loaded ${objects.length} object types`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load objects');
+                }
+            } catch (error) {
+                addLog(`Error loading objects: ${error.message}`, 'error');
+                showAlert(`Failed to load objects: ${error.message}`, 'error');
+            }
+        }
+        
+        // Save configuration to backend
+        async function saveConfiguration() {
+            if (!appState.apiKey || !appState.locationId) {
+                showAlert('Please test connection first', 'warning');
+                return;
+            }
             
-            const objectSelect = document.getElementById('object-select');
-            objectSelect.innerHTML = '<option value="">Choose an object type...</option>';
+            const formId = document.getElementById('form-select').value;
+            const objectType = document.getElementById('object-select').value;
             
-            objects.forEach(obj => {
-                const option = document.createElement('option');
-                option.value = obj.id;
-                option.textContent = obj.name;
-                objectSelect.appendChild(option);
-            });
+            if (!formId || !objectType) {
+                showAlert('Please select both a form and object type', 'warning');
+                return;
+            }
             
-            addLog(`Loaded ${objects.length} object types`, 'success');
+            const config = {
+                locationId: appState.locationId,
+                apiKey: appState.apiKey,
+                formId: formId,
+                objectType: objectType,
+                fieldMappings: appState.fieldMappings,
+                keyType: appState.keyType,
+                keyConfig: appState.keyConfig
+            };
+            
+            try {
+                const response = await fetch('/api/configure', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    addLog('Configuration saved successfully', 'success');
+                    showAlert('Configuration saved! Your app is now active.', 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save configuration');
+                }
+            } catch (error) {
+                addLog(`Error saving configuration: ${error.message}`, 'error');
+                showAlert(`Failed to save configuration: ${error.message}`, 'error');
+            }
         }
         
         // Auto-map fields between form and object
         function autoMapFields() {
             const mappingsContainer = document.getElementById('field-mappings');
             
-            // Simulate form fields (replace with actual form analysis)
-            const formFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'message'];
-            const objectFields = ['first_name', 'last_name', 'email_address', 'phone_number', 'company_name', 'notes'];
+            // Common field mappings
+            const commonMappings = [
+                { formField: 'firstName', objectField: 'first_name' },
+                { formField: 'lastName', objectField: 'last_name' },
+                { formField: 'email', objectField: 'email_address' },
+                { formField: 'phone', objectField: 'phone_number' },
+                { formField: 'company', objectField: 'company_name' },
+                { formField: 'message', objectField: 'notes' }
+            ];
             
             mappingsContainer.innerHTML = '';
+            appState.fieldMappings = [];
             
-            formFields.forEach((formField, index) => {
-                const objectField = objectFields[index] || '';
-                addFieldMapping(formField, objectField);
+            commonMappings.forEach(mapping => {
+                addFieldMapping(mapping.formField, mapping.objectField);
+                appState.fieldMappings.push(mapping);
             });
             
             addLog('Auto-mapped form fields to object fields', 'success');
@@ -610,16 +677,31 @@ try {
             mappingDiv.innerHTML = `
                 <div>
                     <label>Form Field</label>
-                    <input type="text" value="${formField}" placeholder="Form field name">
+                    <input type="text" value="${formField}" placeholder="Form field name" onchange="updateFieldMappings()">
                 </div>
                 <div class="mapping-arrow">→</div>
                 <div>
                     <label>Object Field</label>
-                    <input type="text" value="${objectField}" placeholder="Object field name">
+                    <input type="text" value="${objectField}" placeholder="Object field name" onchange="updateFieldMappings()">
                 </div>
             `;
             
             mappingsContainer.appendChild(mappingDiv);
+        }
+        
+        // Update field mappings in app state
+        function updateFieldMappings() {
+            const mappingContainers = document.querySelectorAll('.mapping-container');
+            appState.fieldMappings = [];
+            
+            mappingContainers.forEach(container => {
+                const formField = container.querySelector('input[placeholder="Form field name"]').value;
+                const objectField = container.querySelector('input[placeholder="Object field name"]').value;
+                
+                if (formField && objectField) {
+                    appState.fieldMappings.push({ formField, objectField });
+                }
+            });
         }
         
         // Add custom mapping
@@ -654,10 +736,10 @@ try {
                     configHTML = `
                         <div class="form-group">
                             <label>UUID Format</label>
-                            <select>
-                                <option>Standard UUID (36 chars)</option>
-                                <option>Short UUID (22 chars)</option>
-                                <option>Numeric UUID (numbers only)</option>
+                            <select onchange="updateKeyConfig()">
+                                <option value="standard">Standard UUID (36 chars)</option>
+                                <option value="short">Short UUID (22 chars)</option>
+                                <option value="numeric">Numeric UUID (numbers only)</option>
                             </select>
                         </div>
                     `;
@@ -666,15 +748,15 @@ try {
                     configHTML = `
                         <div class="form-group">
                             <label>Prefix</label>
-                            <input type="text" placeholder="e.g. LEAD, CUSTOMER, PROJ" value="LEAD">
+                            <input type="text" placeholder="e.g. LEAD, CUSTOMER, PROJ" value="LEAD" onchange="updateKeyConfig()">
                         </div>
                         <div class="form-group">
                             <label>Starting Number</label>
-                            <input type="number" value="1" min="1">
+                            <input type="number" value="1" min="1" onchange="updateKeyConfig()">
                         </div>
                         <div class="form-group">
                             <label>Padding (digits)</label>
-                            <input type="number" value="3" min="1" max="10">
+                            <input type="number" value="3" min="1" max="10" onchange="updateKeyConfig()">
                         </div>
                     `;
                     break;
@@ -682,21 +764,21 @@ try {
                     configHTML = `
                         <div class="form-group">
                             <label>Date Format</label>
-                            <select>
-                                <option>YYYYMMDD-HHMMSS</option>
-                                <option>YYYY-MM-DD-HH-MM-SS</option>
-                                <option>YYYYMMDD</option>
-                                <option>YYMMDD-HHMM</option>
+                            <select onchange="updateKeyConfig()">
+                                <option value="YYYYMMDD-HHMMSS">YYYYMMDD-HHMMSS</option>
+                                <option value="YYYY-MM-DD-HH-MM-SS">YYYY-MM-DD-HH-MM-SS</option>
+                                <option value="YYYYMMDD">YYYYMMDD</option>
+                                <option value="YYMMDD-HHMM">YYMMDD-HHMM</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Timezone</label>
-                            <select>
-                                <option>UTC</option>
-                                <option>America/New_York</option>
-                                <option>America/Chicago</option>
-                                <option>America/Denver</option>
-                                <option>America/Los_Angeles</option>
+                            <select onchange="updateKeyConfig()">
+                                <option value="UTC">UTC</option>
+                                <option value="America/New_York">America/New_York</option>
+                                <option value="America/Chicago">America/Chicago</option>
+                                <option value="America/Denver">America/Denver</option>
+                                <option value="America/Los_Angeles">America/Los_Angeles</option>
                             </select>
                         </div>
                     `;
@@ -705,18 +787,18 @@ try {
                     configHTML = `
                         <div class="form-group">
                             <label>Field Pattern</label>
-                            <input type="text" placeholder="e.g. {lastName}-{firstName}-{year}" value="{lastName}-{firstName}-{year}">
+                            <input type="text" placeholder="e.g. {lastName}-{firstName}-{year}" value="{lastName}-{firstName}-{year}" onchange="updateKeyConfig()">
                         </div>
                         <div class="form-group">
                             <label>Separator</label>
-                            <input type="text" value="-" maxlength="1">
+                            <input type="text" value="-" maxlength="1" onchange="updateKeyConfig()">
                         </div>
                         <div class="form-group">
                             <label>Case Conversion</label>
-                            <select>
-                                <option>UPPERCASE</option>
-                                <option>lowercase</option>
-                                <option>No Change</option>
+                            <select onchange="updateKeyConfig()">
+                                <option value="UPPERCASE">UPPERCASE</option>
+                                <option value="lowercase">lowercase</option>
+                                <option value="No Change">No Change</option>
                             </select>
                         </div>
                     `;
@@ -724,60 +806,52 @@ try {
             }
             
             configDiv.innerHTML = configHTML;
+            updateKeyConfig();
         }
         
-        // Test form submission
-        function testFormSubmission() {
+        // Update key configuration in app state
+        function updateKeyConfig() {
+            // This function would collect the key configuration values
+            // For now, it's a placeholder
+            appState.keyConfig = { type: appState.keyType };
+        }
+        
+        // Test form submission - Now uses real backend
+        async function testFormSubmission() {
+            if (!appState.locationId) {
+                showAlert('Please configure the app first', 'warning');
+                return;
+            }
+            
             addLog('Testing form submission processing...', 'info');
             
-            // Simulate form submission processing
-            setTimeout(() => {
-                const testData = {
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john.doe@example.com',
-                    phone: '555-0123',
-                    company: 'Test Company'
-                };
+            try {
+                const response = await fetch('/api/test-submission', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        locationId: appState.locationId
+                    })
+                });
                 
-                addLog('Form submission received: ' + JSON.stringify(testData), 'info');
-                addLog('Generating unique key...', 'info');
-                
-                setTimeout(() => {
-                    const uniqueKey = generateUniqueKey(testData);
-                    addLog('Generated key: ' + uniqueKey, 'success');
-                    addLog('Creating custom object record...', 'info');
-                    
-                    setTimeout(() => {
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
                         updateStats();
-                        addLog('Custom object created successfully!', 'success');
+                        addLog('Test form submission processed successfully!', 'success');
                         showAlert('Test form submission processed successfully!', 'success');
-                    }, 1000);
-                }, 500);
-            }, 1000);
-        }
-        
-        // Generate unique key based on selected type
-        function generateUniqueKey(formData) {
-            switch(appState.keyType) {
-                case 'uuid':
-                    return 'uuid-' + Math.random().toString(36).substr(2, 9);
-                case 'sequential':
-                    return 'LEAD-' + String(appState.stats.objectsCreated + 1).padStart(3, '0');
-                case 'date':
-                    const now = new Date();
-                    return now.getFullYear() + 
-                           String(now.getMonth() + 1).padStart(2, '0') + 
-                           String(now.getDate()).padStart(2, '0') + '-' +
-                           String(now.getHours()).padStart(2, '0') + 
-                           String(now.getMinutes()).padStart(2, '0') + 
-                           String(now.getSeconds()).padStart(2, '0');
-                case 'composite':
-                    return (formData.lastName || 'UNKNOWN') + '-' + 
-                           (formData.firstName || 'UNKNOWN') + '-' + 
-                           new Date().getFullYear();
-                default:
-                    return 'key-' + Math.random().toString(36).substr(2, 9);
+                    } else {
+                        throw new Error(result.error || 'Test failed');
+                    }
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Test failed');
+                }
+            } catch (error) {
+                addLog(`Test submission error: ${error.message}`, 'error');
+                showAlert(`Test failed: ${error.message}`, 'error');
             }
         }
         
@@ -823,12 +897,16 @@ try {
             
             // Find the first config section to insert before
             const firstSection = document.querySelector('.config-section');
-            firstSection.parentNode.insertBefore(alertDiv, firstSection);
-            
-            // Remove after 5 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
+            if (firstSection) {
+                firstSection.parentNode.insertBefore(alertDiv, firstSection);
+                
+                // Remove after 5 seconds
+                setTimeout(() => {
+                    if (alertDiv && alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
         }
         
         // Initialize app
@@ -836,77 +914,6 @@ try {
             addLog('Form to Object Creator initialized', 'success');
             addLog('Ready to configure your automation', 'info');
         });
-        
-        // Main webhook handler for form submissions (this would be called by CRM)
-        async function handleFormSubmission(formData, formId) {
-            try {
-                addLog(`Processing form submission from form: ${formId}`, 'info');
-                
-                // Generate unique key
-                const uniqueKey = generateUniqueKey(formData);
-                
-                // Map form fields to object fields
-                const objectData = mapFormToObject(formData);
-                objectData.uniqueKey = uniqueKey;
-                
-                // Create object in CRM
-                const result = await createCustomObject(objectData);
-                
-                if (result.success) {
-                    updateStats();
-                    addLog(`Successfully created object with key: ${uniqueKey}`, 'success');
-                } else {
-                    addLog(`Failed to create object: ${result.error}`, 'error');
-                }
-                
-                return result;
-            } catch (error) {
-                addLog(`Error processing form submission: ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
-        }
-        
-        // Map form data to object fields
-        function mapFormToObject(formData) {
-            const mappings = appState.fieldMappings;
-            const objectData = {};
-            
-            // Apply field mappings
-            mappings.forEach(mapping => {
-                if (formData[mapping.formField] && mapping.objectField) {
-                    objectData[mapping.objectField] = formData[mapping.formField];
-                }
-            });
-            
-            return objectData;
-        }
-        
-        // Create custom object via CRM API
-        async function createCustomObject(objectData) {
-            try {
-                // This would be the actual API call to CRM
-                const response = await fetch(`https://services.leadconnectorhq.com/locations/${appState.locationId}/customObjects`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${appState.apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        objectType: appState.selectedObject,
-                        data: objectData
-                    })
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    return { success: true, data: result };
-                } else {
-                    throw new Error(`API Error: ${response.status}`);
-                }
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
-        }
     </script>
 </body>
 </html>
