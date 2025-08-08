@@ -87,10 +87,11 @@ async function createCustomObject(objectData, config) {
         addLog(`Creating ${config.objectType} object...`, 'info');
         
         const response = await axios.post(
-            `https://services.leadconnectorhq.com/locations/${config.locationId}/customObjects`,
+            `https://services.leadconnectorhq.com/objects/records`,
             {
-                objectType: config.objectType,
-                data: objectData
+                location_id: config.locationId,
+    object_id: config.objectType,
+    data: objectData
             },
             {
                 headers: {
