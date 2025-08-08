@@ -107,15 +107,18 @@ async function createCustomObject(fields, config) {
         addLog(`Creating ${config.objectType} object...`, 'info');
         
         const requestBody = {
-            objectId: config.objectType,  // This should be "incident_reports"
+            objectId: config.objectType,  // The object ID: 687fe8d2328eae10b3422d35
             fields: fields
         };
         
         addLog(`Request body: ${JSON.stringify(requestBody)}`, 'info');
         
+        // Try different endpoint structure
         const response = await axios.post(
-            `https://services.leadconnectorhq.com/locations/${config.locationId}/customObjects/record`,
-            requestBody,
+            `https://services.leadconnectorhq.com/locations/${config.locationId}/customObjects/${config.objectType}/record`,
+            {
+                fields: fields  // Just send fields directly
+            },
             {
                 headers: {
                     'Authorization': `Bearer ${config.apiKey}`,
@@ -130,6 +133,37 @@ async function createCustomObject(fields, config) {
         return { success: true, data: response.data };
         
     } catch (error) {
+        // If that fails, try the original endpoint with different structure
+        if (error.response?.status === 404) {
+            try {
+                addLog(`Trying alternative endpoint structure...`, 'info');
+                
+                const altResponse = await axios.post(
+                    `https://services.leadconnectorhq.com/customObjects/records`,
+                    {
+                        locationId: config.locationId,
+                        objectId: config.objectType,
+                        fields: fields
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${config.apiKey}`,
+                            'Content-Type': 'application/json',
+                            'Version': '2021-07-28'
+                        },
+                        timeout: 10000
+                    }
+                );
+                
+                addLog(`Custom object created successfully with alt endpoint: ${altResponse.data.id}`, 'success');
+                return { success: true, data: altResponse.data };
+            } catch (altError) {
+                const errorMsg = altError.response?.data?.message || altError.message;
+                addLog(`Both endpoints failed: ${errorMsg}`, 'error');
+                throw new Error(`Failed to create custom object: ${errorMsg}`);
+            }
+        }
+        
         const errorMsg = error.response?.data?.message || error.message;
         addLog(`Failed to create custom object: ${errorMsg}`, 'error');
         
