@@ -309,11 +309,11 @@
         </div>
         
         <div class="tabs">
-            <div class="tab active" onclick="showTab('connect')">Connect</div>
-            <div class="tab" onclick="showTab('configure')">Configure</div>
-            <div class="tab" onclick="showTab('mapping')">Field Mapping</div>
-            <div class="tab" onclick="showTab('webhook')">Webhook</div>
-            <div class="tab" onclick="showTab('monitor')">Monitor</div>
+            <div class="tab active" data-tab="connect">Connect</div>
+            <div class="tab" data-tab="configure">Configure</div>
+            <div class="tab" data-tab="mapping">Field Mapping</div>
+            <div class="tab" data-tab="webhook">Webhook</div>
+            <div class="tab" data-tab="monitor">Monitor</div>
         </div>
         
         <!-- Connection Tab -->
@@ -345,7 +345,7 @@
                 <h3>📝 Form Configuration</h3>
                 <div class="form-group">
                     <label>Form ID</label>
-                    <input type="text" id="form-id" placeholder="Enter Form ID (e.g., eEju238FJKDbjt462YBS)">
+                    <input type="text" id="form-id" placeholder="Enter Form ID (e.g., sEju238FJKDbtj46zYBS)">
                     <div class="form-help">
                         Go to Sites → Forms in your CRM, click your form, and copy the Form ID from the URL
                     </div>
@@ -356,7 +356,7 @@
                 <h3>🎯 Custom Object Type</h3>
                 <div class="form-group">
                     <label>Object Type</label>
-                    <input type="text" id="object-type" placeholder="Enter object type name (e.g., Incidents, Companies)">
+                    <input type="text" id="object-type" placeholder="Enter the exact name (e.g., Incident Report)">
                     <div class="form-help">
                         Enter the exact name of your custom object type from your CRM
                     </div>
@@ -366,19 +366,19 @@
             <div class="section">
                 <h3>🔑 Unique Key Generation</h3>
                 <div class="key-options">
-                    <div class="key-option" data-type="uuid">
+                    <div class="key-option" data-keytype="uuid">
                         <h4>UUID</h4>
                         <p>Random unique IDs</p>
                     </div>
-                    <div class="key-option" data-type="sequential">
+                    <div class="key-option" data-keytype="sequential">
                         <h4>Sequential</h4>
                         <p>INCIDENT-001, INCIDENT-002</p>
                     </div>
-                    <div class="key-option" data-type="date">
+                    <div class="key-option" data-keytype="date">
                         <h4>Date-Based</h4>
                         <p>20250807-143052</p>
                     </div>
-                    <div class="key-option" data-type="composite">
+                    <div class="key-option" data-keytype="composite">
                         <h4>Composite</h4>
                         <p>SMITH-JOHN-2025</p>
                     </div>
@@ -474,39 +474,28 @@
             }
         };
         
-        // Tab management
+        // Tab management - FIXED VERSION
         function showTab(tabName) {
+            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
+            
+            // Remove active from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             
-            document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
-        }
-        
-        // Add log entry - FIXED VERSION
-        function addLog(message, type = 'info') {
-            try {
-                const logs = document.getElementById('activity-logs');
-                if (logs) {
-                    const timestamp = new Date().toLocaleTimeString();
-                    const logEntry = document.createElement('div');
-                    logEntry.className = 'log-entry';
-                    logEntry.innerHTML = `
-                        <span class="log-time">[${timestamp}]</span>
-                        <span class="log-${type}">${message}</span>
-                    `;
-                    logs.appendChild(logEntry);
-                    logs.scrollTop = logs.scrollHeight;
-                }
-                
-                // Also log to console for debugging
-                console.log(`[${type.toUpperCase()}] ${message}`);
-            } catch (error) {
-                console.error('Logging error:', error);
+            // Show selected tab content
+            const selectedContent = document.getElementById(tabName);
+            if (selectedContent) {
+                selectedContent.classList.add('active');
+            }
+            
+            // Mark the clicked tab as active
+            const selectedTab = document.querySelector(`[data-tab="${tabName}"]`);
+            if (selectedTab) {
+                selectedTab.classList.add('active');
             }
         }
         
@@ -541,43 +530,68 @@
         }
         
         // Select key type - FIXED VERSION
-        function selectKeyType(type, element) {
-            try {
-                // Remove selection from all options
-                document.querySelectorAll('.key-option').forEach(option => {
-                    option.classList.remove('selected');
-                });
-                
-                // Add selection to clicked element
-                if (element) {
-                    element.classList.add('selected');
-                } else {
-                    // Fallback: find by data attribute
-                    const targetElement = document.querySelector(`[data-type="${type}"]`);
-                    if (targetElement) {
-                        targetElement.classList.add('selected');
-                    }
-                }
-                
-                app.keyType = type;
-                addLog(`Selected ${type} key generation`, 'info');
-            } catch (error) {
-                console.error('Error selecting key type:', error);
-            }
-        }
-        
-        // Set up key type click handlers
-        document.addEventListener('DOMContentLoaded', function() {
+        function selectKeyType(keyType) {
+            // Remove selection from all options
             document.querySelectorAll('.key-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    const type = this.getAttribute('data-type');
-                    selectKeyType(type, this);
-                });
+                option.classList.remove('selected');
             });
             
-            addLog('CRM Form-to-Object Automation initialized', 'success');
-            addLog('Ready to configure webhook automation', 'info');
-        });
+            // Add selection to the clicked option
+            const selectedOption = document.querySelector(`[data-keytype="${keyType}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            app.keyType = keyType;
+            addLog(`Selected ${keyType} key generation`, 'info');
+            
+            // Show key type specific configuration
+            showKeyConfig(keyType);
+        }
+        
+        // Show key type configuration
+        function showKeyConfig(keyType) {
+            const configDiv = document.getElementById('key-config');
+            let configHTML = '';
+            
+            switch(keyType) {
+                case 'sequential':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Prefix</label>
+                            <input type="text" id="key-prefix" placeholder="e.g., INCIDENT" value="INCIDENT">
+                        </div>
+                        <div class="form-group">
+                            <label>Starting Number</label>
+                            <input type="number" id="key-start" value="1" min="1">
+                        </div>
+                    `;
+                    break;
+                case 'date':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Date Format</label>
+                            <select id="date-format">
+                                <option value="YYYYMMDD-HHMMSS">YYYYMMDD-HHMMSS</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                <option value="timestamp">Unix Timestamp</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'composite':
+                    configHTML = `
+                        <div class="form-group">
+                            <label>Field Pattern</label>
+                            <input type="text" id="composite-pattern" placeholder="{lastName}-{firstName}-{year}" value="{lastName}-{firstName}-{year}">
+                            <div class="form-help">Use field names in curly braces</div>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            configDiv.innerHTML = configHTML;
+        }
         
         // Add field mapping
         function addMapping() {
@@ -619,9 +633,8 @@
                 ['lastName', 'last_name'],
                 ['email', 'email_address'],
                 ['phone', 'phone_number'],
-                ['company', 'company_name'],
-                ['message', 'description'],
                 ['incidentType', 'incident_type'],
+                ['description', 'description'],
                 ['priority', 'priority'],
                 ['status', 'status']
             ];
@@ -660,6 +673,12 @@
             if (!app.apiKey || !app.locationId || !app.formId || !app.objectType) {
                 showStatus('webhook-status', 'Please fill in all required fields first', 'warning');
                 return;
+            }
+            
+            // Update key config based on selected type
+            if (app.keyType === 'sequential') {
+                app.keyConfig.prefix = document.getElementById('key-prefix')?.value || 'INCIDENT';
+                app.keyConfig.start = document.getElementById('key-start')?.value || 1;
             }
             
             const config = {
@@ -739,9 +758,26 @@
             document.getElementById('success-rate').textContent = app.stats.successRate + '%';
         }
         
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('activity-logs');
+            if (!logs) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-time">[${timestamp}]</span>
+                <span class="log-${type}">${message}</span>
+            `;
+            
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
         // Show status message
         function showStatus(elementId, message, type) {
-            const statusElement = elementId ? document.getElementById(elementId) : null;
+            const statusElement = document.getElementById(elementId);
             if (statusElement) {
                 statusElement.innerHTML = `<div class="status-box status-${type}">${message}</div>`;
             }
@@ -749,26 +785,49 @@
         
         // Clear logs
         function clearLogs() {
-            document.getElementById('activity-logs').innerHTML = '';
-            addLog('Logs cleared', 'info');
+            const logs = document.getElementById('activity-logs');
+            if (logs) {
+                logs.innerHTML = '';
+                addLog('Logs cleared', 'info');
+            }
         }
         
         // Download logs
         function downloadLogs() {
-            try {
-                const logs = document.getElementById('activity-logs').innerText;
-                const blob = new Blob([logs], { type: 'text/plain' });
+            const logs = document.getElementById('activity-logs');
+            if (logs) {
+                const logsText = logs.innerText;
+                const blob = new Blob([logsText], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `webhook-logs-${new Date().toISOString().split('T')[0]}.txt`;
                 a.click();
                 URL.revokeObjectURL(url);
-            } catch (error) {
-                console.error('Error downloading logs:', error);
-                addLog('Error downloading logs', 'error');
             }
         }
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up tab click handlers
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    showTab(tabName);
+                });
+            });
+            
+            // Set up key option click handlers
+            document.querySelectorAll('.key-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const keyType = this.getAttribute('data-keytype');
+                    selectKeyType(keyType);
+                });
+            });
+            
+            addLog('CRM Form-to-Object Automation initialized', 'success');
+            addLog('Ready to configure webhook automation', 'info');
+        });
     </script>
 </body>
 </html>
