@@ -42,7 +42,7 @@ function generateUniqueKey(formData, keyType = 'uuid', keyConfig = {}) {
             const counter = configurations.size + Math.floor(Math.random() * 1000) + 1;
             return `${prefix}-${String(counter).padStart(3, '0')}`;
             
-        case 'date': {
+        case 'date':
             const year = timestamp.getFullYear();
             const month = String(timestamp.getMonth() + 1).padStart(2, '0');
             const day = String(timestamp.getDate()).padStart(2, '0');
@@ -50,49 +50,67 @@ function generateUniqueKey(formData, keyType = 'uuid', keyConfig = {}) {
             const minute = String(timestamp.getMinutes()).padStart(2, '0');
             const second = String(timestamp.getSeconds()).padStart(2, '0');
             return `${year}${month}${day}-${hour}${minute}${second}`;
-        }
             
-        case 'composite': {
+        case 'composite':
             const lastName = formData.lastName || formData.last_name || 'UNKNOWN';
             const firstName = formData.firstName || formData.first_name || 'UNKNOWN';
-            const currentYear = timestamp.getFullYear();
-            return `${lastName}-${firstName}-${currentYear}`.toUpperCase();
-        }
+            const year = timestamp.getFullYear();
+            return `${lastName}-${firstName}-${year}`.toUpperCase();
             
         default:
             return 'key_' + Date.now();
     }
 }
-// Map form data to object fields
-function mapFormToObject(formData, fieldMappings) {
-    const objectData = {};
+
+// Map form data to object fields - UPDATED FOR GHL FORMAT
+function mapFormToObject(formData, fieldMappings, uniqueKey) {
+    const fields = [];
     
     // Apply configured field mappings
     fieldMappings.forEach(mapping => {
-        if (formData[mapping.formField] && mapping.objectField) {
-            objectData[mapping.objectField] = formData[mapping.formField];
+        if (formData[mapping.formField] !== undefined && mapping.objectField) {
+            fields.push({
+                id: mapping.objectField,
+                value: formData[mapping.formField]
+            });
         }
     });
     
-    // Add metadata
-    objectData.createdAt = new Date().toISOString();
-    objectData.source = 'webhook_automation';
+    // Add unique key
+    fields.push({
+        id: 'unique_key',
+        value: uniqueKey
+    });
     
-    return objectData;
+    // Add metadata
+    fields.push({
+        id: 'created_at',
+        value: new Date().toISOString()
+    });
+    
+    fields.push({
+        id: 'source',
+        value: 'webhook_automation'
+    });
+    
+    return fields;
 }
 
-// Create custom object via CRM API
-async function createCustomObject(objectData, config) {
+// Create custom object via CRM API - FIXED VERSION
+async function createCustomObject(fields, config) {
     try {
         addLog(`Creating ${config.objectType} object...`, 'info');
         
+        const requestBody = {
+            objectId: config.objectType,  // This should be "incident_reports"
+            fields: fields
+        };
+        
+        addLog(`Request body: ${JSON.stringify(requestBody)}`, 'info');
+        
         const response = await axios.post(
-            `https://services.leadconnectorhq.com/objects/records`,
-            {
-                location_id: config.locationId,
-    object_id: config.objectType,
-    data: objectData
-            },
+            `https://services.leadconnectorhq.com/locations/${config.locationId}/customObjects/record`,
+            requestBody,
             {
                 headers: {
                     'Authorization': `Bearer ${config.apiKey}`,
@@ -109,6 +127,13 @@ async function createCustomObject(objectData, config) {
     } catch (error) {
         const errorMsg = error.response?.data?.message || error.message;
         addLog(`Failed to create custom object: ${errorMsg}`, 'error');
+        
+        // Log more details for debugging
+        if (error.response) {
+            addLog(`Error status: ${error.response.status}`, 'error');
+            addLog(`Error details: ${JSON.stringify(error.response.data)}`, 'error');
+        }
+        
         throw new Error(`Failed to create custom object: ${errorMsg}`);
     }
 }
@@ -121,8 +146,8 @@ app.post('/webhook/form-submission', async (req, res) => {
         
         // Extract data from webhook payload
         const formData = req.body.data || req.body;
-        const locationId = req.body.extras?.locationId || req.body.locationId;
-        const formId = req.body.extras?.formId || req.body.formId;
+        const locationId = req.body.extras?.locationId || req.body.locationId || req.headers['x-location-id'];
+        const formId = req.body.extras?.formId || req.body.formId || req.headers['x-form-id'];
         
         addLog(`Form ID: ${formId}, Location: ${locationId}`, 'info');
         
@@ -142,14 +167,13 @@ app.post('/webhook/form-submission', async (req, res) => {
         const uniqueKey = generateUniqueKey(formData, config.keyType, config.keyConfig);
         addLog(`Generated unique key: ${uniqueKey}`, 'info');
         
-        // Map form fields to object fields
-        const objectData = mapFormToObject(formData, config.fieldMappings);
-        objectData.uniqueKey = uniqueKey;
+        // Map form fields to object fields in GHL format
+        const fields = mapFormToObject(formData, config.fieldMappings, uniqueKey);
         
-        addLog(`Mapped object data: ${JSON.stringify(objectData)}`, 'info');
+        addLog(`Mapped fields: ${JSON.stringify(fields)}`, 'info');
         
         // Create custom object
-        const result = await createCustomObject(objectData, config);
+        const result = await createCustomObject(fields, config);
         
         addLog('🎉 Webhook processing completed successfully', 'success');
         
@@ -263,11 +287,10 @@ app.post('/api/test-submission', async (req, res) => {
         const uniqueKey = generateUniqueKey(testData, testConfig.keyType, testConfig.keyConfig);
         
         // Map form fields to object fields
-        const objectData = mapFormToObject(testData, testConfig.fieldMappings);
-        objectData.uniqueKey = uniqueKey;
+        const fields = mapFormToObject(testData, testConfig.fieldMappings, uniqueKey);
         
         // Create custom object
-        const result = await createCustomObject(objectData, testConfig);
+        const result = await createCustomObject(fields, testConfig);
         
         addLog('✅ Test completed successfully', 'success');
         
@@ -276,7 +299,7 @@ app.post('/api/test-submission', async (req, res) => {
             message: 'Test webhook completed successfully',
             objectId: result.data.id,
             uniqueKey: uniqueKey,
-            testData: objectData
+            fieldsCreated: fields
         });
         
     } catch (error) {
